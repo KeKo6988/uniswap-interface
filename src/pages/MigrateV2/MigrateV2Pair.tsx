@@ -209,13 +209,33 @@ function V2PairMigration({
           tickUpper,
           amount0: token0Value.quotient,
           amount1: token1Value.quotient,
-          useFullPrecision: true, // we want full precision for the theoretical position
+          useFullPrecision: false, // we don't want full precision as this is used to calculate slippage amounts
         })
       : undefined
 
-  const { amount0: v3Amount0Min, amount1: v3Amount1Min } = useMemo(
-    () => (position ? position.mintAmountsWithSlippage(allowedSlippage) : { amount0: undefined, amount1: undefined }),
-    [position, allowedSlippage]
+  const v3Amount0Min = useMemo(
+    () =>
+      position &&
+      CurrencyAmount.fromRawAmount(
+        token0,
+        JSBI.divide(
+          JSBI.multiply(position.amount0.quotient, JSBI.BigInt(10000 - JSBI.toNumber(allowedSlippage.numerator))),
+          JSBI.BigInt(10000)
+        )
+      ),
+    [token0, position, allowedSlippage]
+  )
+  const v3Amount1Min = useMemo(
+    () =>
+      position &&
+      CurrencyAmount.fromRawAmount(
+        token1,
+        JSBI.divide(
+          JSBI.multiply(position.amount1.quotient, JSBI.BigInt(10000 - JSBI.toNumber(allowedSlippage.numerator))),
+          JSBI.BigInt(10000)
+        )
+      ),
+    [token1, position, allowedSlippage]
   )
 
   const refund0 = useMemo(
@@ -316,8 +336,8 @@ function V2PairMigration({
           fee: feeAmount,
           tickLower,
           tickUpper,
-          amount0Min: `0x${v3Amount0Min.toString(16)}`,
-          amount1Min: `0x${v3Amount1Min.toString(16)}`,
+          amount0Min: `0x${v3Amount0Min.quotient.toString(16)}`,
+          amount1Min: `0x${v3Amount1Min.quotient.toString(16)}`,
           recipient: account,
           deadline: deadlineToUse,
           refundAsETH: true, // hard-code this for now
