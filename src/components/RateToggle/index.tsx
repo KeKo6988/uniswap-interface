@@ -1,8 +1,6 @@
-import React from 'react'
+import { Trans } from '@lingui/macro'
 import { Currency } from '@uniswap/sdk-core'
 import { ToggleElement, ToggleWrapper } from 'components/Toggle/MultiToggle'
-import { useActiveWeb3React } from 'hooks'
-import { wrappedCurrency } from 'utils/wrappedCurrency'
 
 // the order of displayed base currencies from left to right is always in sort order
 // currencyA is treated as the preferred base currency
@@ -15,21 +13,19 @@ export default function RateToggle({
   currencyB: Currency
   handleRateToggle: () => void
 }) {
-  const { chainId } = useActiveWeb3React()
-
-  const tokenA = wrappedCurrency(currencyA, chainId)
-  const tokenB = wrappedCurrency(currencyB, chainId)
+  const tokenA = currencyA?.wrapped
+  const tokenB = currencyB?.wrapped
 
   const isSorted = tokenA && tokenB && tokenA.sortsBefore(tokenB)
 
   return tokenA && tokenB ? (
-    <div style={{ width: 'fit-content', display: 'flex', alignItems: 'center' }}>
+    <div style={{ width: 'fit-content', display: 'flex', alignItems: 'center' }} onClick={handleRateToggle}>
       <ToggleWrapper width="fit-content">
-        <ToggleElement isActive={isSorted} fontSize="12px" onClick={handleRateToggle}>
-          {isSorted ? currencyA.symbol + ' price ' : currencyB.symbol + ' price '}
+        <ToggleElement isActive={isSorted} fontSize="12px">
+          <Trans>{isSorted ? currencyA.symbol : currencyB.symbol} price</Trans>
         </ToggleElement>
-        <ToggleElement isActive={!isSorted} fontSize="12px" onClick={handleRateToggle}>
-          {isSorted ? currencyB.symbol + ' price ' : currencyA.symbol + ' price '}
+        <ToggleElement isActive={!isSorted} fontSize="12px">
+          <Trans>{isSorted ? currencyB.symbol : currencyA.symbol} price</Trans>
         </ToggleElement>
       </ToggleWrapper>
     </div>

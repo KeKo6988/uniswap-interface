@@ -1,4 +1,5 @@
-import { BIG_INT_ZERO } from '../../../constants/index'
+import { t } from '@lingui/macro'
+import { BIG_INT_ZERO } from '../../../constants/misc'
 import { getTickToPrice } from 'utils/getTickToPrice'
 import JSBI from 'jsbi'
 import { PoolState } from '../../../hooks/usePools'
@@ -12,32 +13,29 @@ import {
   TICK_SPACINGS,
   encodeSqrtRatioX96,
 } from '@uniswap/v3-sdk/dist/'
-import { Currency, Token, CurrencyAmount, currencyEquals, Price, Rounding } from '@uniswap/sdk-core'
+import { Currency, Token, CurrencyAmount, Price, Rounding } from '@uniswap/sdk-core'
 import { useCallback, useMemo } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { useActiveWeb3React } from '../../../hooks'
-import { wrappedCurrency, wrappedCurrencyAmount } from '../../../utils/wrappedCurrency'
-import { AppDispatch, AppState } from '../../index'
+import { useActiveWeb3React } from '../../../hooks/web3'
+import { AppState } from '../../index'
 import { tryParseAmount } from '../../swap/hooks'
 import { useCurrencyBalances } from '../../wallet/hooks'
 import { Field, Bound, typeInput, typeStartPriceInput, typeLeftRangeInput, typeRightRangeInput } from './actions'
 import { tryParseTick } from './utils'
 import { usePool } from 'hooks/usePools'
+import { useAppDispatch, useAppSelector } from 'state/hooks'
 
 export function useV3MintState(): AppState['mintV3'] {
-  return useSelector<AppState, AppState['mintV3']>((state) => state.mintV3)
+  return useAppSelector((state) => state.mintV3)
 }
 
-export function useV3MintActionHandlers(
-  noLiquidity: boolean | undefined
-): {
+export function useV3MintActionHandlers(noLiquidity: boolean | undefined): {
   onFieldAInput: (typedValue: string) => void
   onFieldBInput: (typedValue: string) => void
   onLeftRangeInput: (typedValue: string) => void
   onRightRangeInput: (typedValue: string) => void
   onStartPriceInput: (typedValue: string) => void
 } {
-  const dispatch = useDispatch<AppDispatch>()
+  const dispatch = useAppDispatch()
 
   const onFieldAInput = useCallback(
     (typedValue: string) => {
@@ -112,15 +110,10 @@ export function useV3DerivedMintInfo(
   depositBDisabled: boolean
   invertPrice: boolean
 } {
-  const { account, chainId } = useActiveWeb3React()
+  const { account } = useActiveWeb3React()
 
-  const {
-    independentField,
-    typedValue,
-    leftRangeTypedValue,
-    rightRangeTypedValue,
-    startPriceTypedValue,
-  } = useV3MintState()
+  const { independentField, typedValue, leftRangeTypedValue, rightRangeTypedValue, startPriceTypedValue } =
+    useV3MintState()
 
   const dependentField = independentField === Field.CURRENCY_A ? Field.CURRENCY_B : Field.CURRENCY_A
 
@@ -135,12 +128,8 @@ export function useV3DerivedMintInfo(
 
   // formatted with tokens
   const [tokenA, tokenB, baseToken] = useMemo(
-    () => [
-      wrappedCurrency(currencyA, chainId),
-      wrappedCurrency(currencyB, chainId),
-      wrappedCurrency(baseCurrency, chainId),
-    ],
-    [chainId, currencyA, currencyB, baseCurrency]
+    () => [currencyA?.wrapped, currencyB?.wrapped, baseCurrency?.wrapped],
+    [currencyA, currencyB, baseCurrency]
   )
 
   const [token0, token1] = useMemo(
@@ -266,7 +255,7 @@ export function useV3DerivedMintInfo(
 
   const dependentAmount: CurrencyAmount<Currency> | undefined = useMemo(() => {
     // we wrap the currencies just to get the price in terms of the other token
-    const wrappedIndependentAmount = wrappedCurrencyAmount(independentAmount, chainId)
+    const wrappedIndependentAmount = independentAmount?.wrapped
     const dependentCurrency = dependentField === Field.CURRENCY_B ? currencyB : currencyA
     if (
       independentAmount &&
@@ -280,12 +269,13 @@ export function useV3DerivedMintInfo(
         return undefined
       }
 
-      const position: Position | undefined = currencyEquals(wrappedIndependentAmount.currency, poolForPosition.token0)
+      const position: Position | undefined = wrappedIndependentAmount.currency.equals(poolForPosition.token0)
         ? Position.fromAmount0({
             pool: poolForPosition,
             tickLower,
             tickUpper,
             amount0: independentAmount.quotient,
+            useFullPrecision: true, // we want full precision for the theoretical position
           })
         : Position.fromAmount1({
             pool: poolForPosition,
@@ -294,16 +284,15 @@ export function useV3DerivedMintInfo(
             amount1: independentAmount.quotient,
           })
 
-      const dependentTokenAmount = currencyEquals(wrappedIndependentAmount.currency, poolForPosition.token0)
+      const dependentTokenAmount = wrappedIndependentAmount.currency.equals(poolForPosition.token0)
         ? position.amount1
         : position.amount0
-      return dependentCurrency?.isEther ? CurrencyAmount.ether(dependentTokenAmount.quotient) : dependentTokenAmount
+      return dependentCurrency && CurrencyAmount.fromRawAmount(dependentCurrency, dependentTokenAmount.quotient)
     }
 
     return undefined
   }, [
     independentAmount,
-    chainId,
     outOfRange,
     dependentField,
     currencyB,
@@ -356,7 +345,7 @@ export function useV3DerivedMintInfo(
       return undefined
     }
 
-    // mark as 0 if disbaled because out of range
+    // mark as 0 if disabled because out of range
     const amount0 = !deposit0Disabled
       ? parsedAmounts?.[tokenA.equals(poolForPosition.token0) ? Field.CURRENCY_A : Field.CURRENCY_B]?.quotient
       : BIG_INT_ZERO
@@ -371,6 +360,7 @@ export function useV3DerivedMintInfo(
         tickUpper,
         amount0,
         amount1,
+        useFullPrecision: true, // we want full precision for the theoretical position
       })
     } else {
       return undefined
@@ -389,32 +379,32 @@ export function useV3DerivedMintInfo(
 
   let errorMessage: string | undefined
   if (!account) {
-    errorMessage = 'Connect Wallet'
+    errorMessage = t`Connect Wallet`
   }
 
   if (poolState === PoolState.INVALID) {
-    errorMessage = errorMessage ?? 'Invalid pair'
+    errorMessage = errorMessage ?? t`Invalid pair`
   }
 
   if (invalidPrice) {
-    errorMessage = errorMessage ?? 'Invalid price input'
+    errorMessage = errorMessage ?? t`Invalid price input`
   }
 
   if (
     (!parsedAmounts[Field.CURRENCY_A] && !depositADisabled) ||
     (!parsedAmounts[Field.CURRENCY_B] && !depositBDisabled)
   ) {
-    errorMessage = errorMessage ?? 'Enter an amount'
+    errorMessage = errorMessage ?? t`Enter an amount`
   }
 
   const { [Field.CURRENCY_A]: currencyAAmount, [Field.CURRENCY_B]: currencyBAmount } = parsedAmounts
 
   if (currencyAAmount && currencyBalances?.[Field.CURRENCY_A]?.lessThan(currencyAAmount)) {
-    errorMessage = 'Insufficient ' + currencies[Field.CURRENCY_A]?.symbol + ' balance'
+    errorMessage = t`Insufficient ${currencies[Field.CURRENCY_A]?.symbol} balance`
   }
 
   if (currencyBAmount && currencyBalances?.[Field.CURRENCY_B]?.lessThan(currencyBAmount)) {
-    errorMessage = 'Insufficient ' + currencies[Field.CURRENCY_B]?.symbol + ' balance'
+    errorMessage = t`Insufficient ${currencies[Field.CURRENCY_B]?.symbol} balance`
   }
 
   const invalidPool = poolState === PoolState.INVALID
@@ -449,9 +439,8 @@ export function useRangeHopCallbacks(
   tickUpper: number | undefined,
   pool?: Pool | undefined | null
 ) {
-  const { chainId } = useActiveWeb3React()
-  const baseToken = useMemo(() => wrappedCurrency(baseCurrency, chainId), [baseCurrency, chainId])
-  const quoteToken = useMemo(() => wrappedCurrency(quoteCurrency, chainId), [quoteCurrency, chainId])
+  const baseToken = useMemo(() => baseCurrency?.wrapped, [baseCurrency])
+  const quoteToken = useMemo(() => quoteCurrency?.wrapped, [quoteCurrency])
 
   const getDecrementLower = useCallback(() => {
     if (baseToken && quoteToken && typeof tickLower === 'number' && feeAmount) {

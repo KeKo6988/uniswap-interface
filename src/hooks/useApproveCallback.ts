@@ -1,15 +1,14 @@
 import { MaxUint256 } from '@ethersproject/constants'
 import { TransactionResponse } from '@ethersproject/providers'
-import { CurrencyAmount, ChainId, Percent, Currency, TradeType } from '@uniswap/sdk-core'
+import { CurrencyAmount, Percent, Currency, TradeType } from '@uniswap/sdk-core'
 import { Trade as V2Trade } from '@uniswap/v2-sdk'
 import { Trade as V3Trade } from '@uniswap/v3-sdk'
 import { useCallback, useMemo } from 'react'
-import { V2_ROUTER_ADDRESS } from '../constants'
-import { SWAP_ROUTER_ADDRESSES } from '../constants/v3'
+import { SWAP_ROUTER_ADDRESSES, V2_ROUTER_ADDRESS } from '../constants/addresses'
 import { useTransactionAdder, useHasPendingApproval } from '../state/transactions/hooks'
-import { calculateGasMargin } from '../utils'
+import { calculateGasMargin } from '../utils/calculateGasMargin'
 import { useTokenContract } from './useContract'
-import { useActiveWeb3React } from './index'
+import { useActiveWeb3React } from './web3'
 import { useTokenAllowance } from './useTokenAllowance'
 
 export enum ApprovalState {
@@ -32,7 +31,7 @@ export function useApproveCallback(
   // check the current approval status
   const approvalState: ApprovalState = useMemo(() => {
     if (!amountToApprove || !spender) return ApprovalState.UNKNOWN
-    if (amountToApprove.currency.isEther) return ApprovalState.APPROVED
+    if (amountToApprove.currency.isNative) return ApprovalState.APPROVED
     // we might not have enough data to know whether or not we need to approve
     if (!currentAllowance) return ApprovalState.UNKNOWN
 
@@ -104,13 +103,19 @@ export function useApproveCallbackFromTrade(
   allowedSlippage: Percent
 ) {
   const { chainId } = useActiveWeb3React()
-  const swapRouterAddress = SWAP_ROUTER_ADDRESSES[chainId as ChainId]
+  const v3SwapRouterAddress = chainId ? SWAP_ROUTER_ADDRESSES[chainId] : undefined
   const amountToApprove = useMemo(
     () => (trade && trade.inputAmount.currency.isToken ? trade.maximumAmountIn(allowedSlippage) : undefined),
     [trade, allowedSlippage]
   )
   return useApproveCallback(
     amountToApprove,
-    trade instanceof V2Trade ? V2_ROUTER_ADDRESS : trade instanceof V3Trade ? swapRouterAddress : undefined
+    chainId
+      ? trade instanceof V2Trade
+        ? V2_ROUTER_ADDRESS[chainId]
+        : trade instanceof V3Trade
+        ? v3SwapRouterAddress
+        : undefined
+      : undefined
   )
 }

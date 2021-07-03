@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useActiveWeb3React } from '../../hooks'
+import { api } from 'state/data/slice'
+import { useAppDispatch, useAppSelector } from 'state/hooks'
+import { supportedChainId } from 'utils/supportedChainId'
 import useDebounce from '../../hooks/useDebounce'
 import useIsWindowVisible from '../../hooks/useIsWindowVisible'
-import { updateBlockNumber } from './actions'
-import { useDispatch } from 'react-redux'
+import { useActiveWeb3React } from '../../hooks/web3'
+import { updateBlockNumber, updateChainId } from './actions'
+
+function useQueryCacheInvalidator() {
+  const chainId = useAppSelector((state) => state.application.chainId)
+  const dispatch = useAppDispatch()
+
+  useEffect(() => {
+    dispatch(api.util.resetApiState())
+  }, [chainId, dispatch])
+}
 
 export default function Updater(): null {
   const { library, chainId } = useActiveWeb3React()
-  const dispatch = useDispatch()
+  const dispatch = useAppDispatch()
 
   const windowVisible = useIsWindowVisible()
 
@@ -15,6 +26,8 @@ export default function Updater(): null {
     chainId,
     blockNumber: null,
   })
+
+  useQueryCacheInvalidator()
 
   const blockNumberCallback = useCallback(
     (blockNumber: number) => {
@@ -52,6 +65,12 @@ export default function Updater(): null {
     if (!debouncedState.chainId || !debouncedState.blockNumber || !windowVisible) return
     dispatch(updateBlockNumber({ chainId: debouncedState.chainId, blockNumber: debouncedState.blockNumber }))
   }, [windowVisible, dispatch, debouncedState.blockNumber, debouncedState.chainId])
+
+  useEffect(() => {
+    dispatch(
+      updateChainId({ chainId: debouncedState.chainId ? supportedChainId(debouncedState.chainId) ?? null : null })
+    )
+  }, [dispatch, debouncedState.chainId])
 
   return null
 }

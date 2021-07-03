@@ -1,9 +1,8 @@
 import Tooltip from 'components/Tooltip'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import styled from 'styled-components/macro'
 
 const TextWrapper = styled.span<{ margin: boolean; link?: boolean; fontSize?: string; adjustSize?: boolean }>`
-  cursor: auto;
   margin-left: ${({ margin }) => margin && '4px'};
   color: ${({ theme, link }) => (link ? theme.blue1 : theme.text1)};
   font-size: ${({ fontSize }) => fontSize ?? 'inherit'};
@@ -22,7 +21,7 @@ const HoverInlineText = ({
   link,
   ...rest
 }: {
-  text: string
+  text?: string
   maxCharacters?: number
   margin?: boolean
   adjustSize?: boolean

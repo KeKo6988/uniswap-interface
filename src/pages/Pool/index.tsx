@@ -1,21 +1,25 @@
-import React, { useContext } from 'react'
+import { useContext } from 'react'
 import { ButtonGray, ButtonOutlined, ButtonPrimary } from 'components/Button'
 import { AutoColumn } from 'components/Column'
 import { FlyoutAlignment, NewMenu } from 'components/Menu'
 import { SwapPoolTabs } from 'components/NavigationTabs'
 import PositionList from 'components/PositionList'
 import { RowBetween, RowFixed } from 'components/Row'
-import { useActiveWeb3React } from 'hooks'
+import { useActiveWeb3React } from 'hooks/web3'
 import { useV3Positions } from 'hooks/useV3Positions'
 import { BookOpen, ChevronDown, Download, Inbox, PlusCircle, ChevronsRight, Layers } from 'react-feather'
-import { useTranslation } from 'react-i18next'
+import { Trans } from '@lingui/macro'
 import { Link } from 'react-router-dom'
 import { useWalletModalToggle } from 'state/application/hooks'
 import styled, { ThemeContext } from 'styled-components'
 import { HideSmall, TYPE } from 'theme'
+import { SwitchLocaleLink } from '../../components/SwitchLocaleLink'
 import { LoadingRows } from './styleds'
+import Toggle from 'components/Toggle'
+import { useUserHideClosedPositions } from 'state/user/hooks'
 
 import CTACards from './CTACards'
+import { PositionDetails } from 'types/position'
 
 const PageWrapper = styled(AutoColumn)`
   max-width: 870px;
@@ -92,20 +96,41 @@ const MainContentWrapper = styled.main`
   flex-direction: column;
 `
 
+const ShowInactiveToggle = styled.div`
+  display: grid;
+  align-items: center;
+  justify-items: end;
+
+  grid-template-columns: 1fr auto;
+  grid-column-gap: 8px;
+  padding: 0 8px;
+`
+
 export default function Pool() {
   const { account } = useActiveWeb3React()
   const toggleWalletModal = useWalletModalToggle()
-  const { t } = useTranslation()
+
   const theme = useContext(ThemeContext)
+  const [userHideClosedPositions, setUserHideClosedPositions] = useUserHideClosedPositions()
 
   const { positions, loading: positionsLoading } = useV3Positions(account)
+
+  const [openPositions, closedPositions] = positions?.reduce<[PositionDetails[], PositionDetails[]]>(
+    (acc, p) => {
+      acc[p.liquidity?.isZero() ? 1 : 0].push(p)
+      return acc
+    },
+    [[], []]
+  ) ?? [[], []]
+
+  const filteredPositions = [...openPositions, ...(userHideClosedPositions ? [] : closedPositions)]
 
   const menuItems = [
     {
       content: (
         <MenuItem>
           <PlusCircle size={16} style={{ marginRight: '12px' }} />
-          {t('Create a pool')}
+          <Trans>Create a pool</Trans>
         </MenuItem>
       ),
       link: '/add/ETH',
@@ -115,7 +140,7 @@ export default function Pool() {
       content: (
         <MenuItem>
           <ChevronsRight size={16} style={{ marginRight: '12px' }} />
-          {t('Migrate')}
+          <Trans>Migrate</Trans>
         </MenuItem>
       ),
       link: '/migrate/v2',
@@ -125,7 +150,7 @@ export default function Pool() {
       content: (
         <MenuItem>
           <Layers size={16} style={{ marginRight: '12px' }} />
-          {t('V2 liquidity')}
+          <Trans>V2 liquidity</Trans>
         </MenuItem>
       ),
       link: '/pool/v2',
@@ -135,7 +160,7 @@ export default function Pool() {
       content: (
         <MenuItem>
           <BookOpen size={16} style={{ marginRight: '12px' }} />
-          {t('Learn')}
+          <Trans>Learn</Trans>
         </MenuItem>
       ),
       link: 'https://docs.uniswap.org/',
@@ -151,7 +176,9 @@ export default function Pool() {
           <AutoColumn gap="lg" style={{ width: '100%' }}>
             <TitleRow style={{ marginTop: '1rem' }} padding={'0'}>
               <HideSmall>
-                <TYPE.mediumHeader>{t('Pools Overview')}</TYPE.mediumHeader>
+                <TYPE.mediumHeader>
+                  <Trans>Pools Overview</Trans>
+                </TYPE.mediumHeader>
               </HideSmall>
               <ButtonRow>
                 <Menu
@@ -160,19 +187,33 @@ export default function Pool() {
                   ToggleUI={(props: any) => (
                     <MoreOptionsButton {...props}>
                       <TYPE.body style={{ alignItems: 'center', display: 'flex' }}>
-                        {t('More')}
+                        <Trans>More</Trans>
                         <ChevronDown size={15} />
                       </TYPE.body>
                     </MoreOptionsButton>
                   )}
                 />
                 <ResponsiveButtonPrimary id="join-pool-button" as={Link} to="/add/ETH">
-                  + {t('New Position')}
+                  + <Trans>New Position</Trans>
                 </ResponsiveButtonPrimary>
               </ButtonRow>
             </TitleRow>
 
             <CTACards />
+
+            {closedPositions.length > 0 ? (
+              <ShowInactiveToggle>
+                <TYPE.darkGray>
+                  <Trans>Closed positions</Trans>
+                </TYPE.darkGray>
+                <Toggle
+                  isActive={!userHideClosedPositions}
+                  toggle={() => setUserHideClosedPositions(!userHideClosedPositions)}
+                  checked={<Trans>Show</Trans>}
+                  unchecked={<Trans>Hide</Trans>}
+                />
+              </ShowInactiveToggle>
+            ) : null}
 
             <MainContentWrapper>
               {positionsLoading ? (
@@ -190,17 +231,19 @@ export default function Pool() {
                   <div />
                   <div />
                 </LoadingRows>
-              ) : positions && positions.length > 0 ? (
-                <PositionList positions={positions} />
+              ) : filteredPositions && filteredPositions.length > 0 ? (
+                <PositionList positions={filteredPositions} />
               ) : (
                 <NoLiquidity>
                   <TYPE.mediumHeader color={theme.text3} textAlign="center">
                     <Inbox size={48} strokeWidth={1} style={{ marginBottom: '.5rem' }} />
-                    <div>{t('Your V3 liquidity positions will appear here.')}</div>
+                    <div>
+                      <Trans>Your V3 liquidity positions will appear here.</Trans>
+                    </div>
                   </TYPE.mediumHeader>
                   {!account ? (
                     <ButtonPrimary style={{ marginTop: '2em', padding: '8px 16px' }} onClick={toggleWalletModal}>
-                      {t('Connect a wallet')}
+                      <Trans>Connect a wallet</Trans>
                     </ButtonPrimary>
                   ) : (
                     <ButtonGray
@@ -209,7 +252,7 @@ export default function Pool() {
                       id="import-pool-link"
                       style={{ marginTop: '2em', padding: '8px 16px', borderRadius: '12px', width: 'fit-content' }}
                     >
-                      {t('Migrate V2 liquidity')}?&nbsp;&nbsp;
+                      <Trans>Migrate V2 liquidity</Trans>?&nbsp;&nbsp;
                       <Download size={16} />
                     </ButtonGray>
                   )}
@@ -231,7 +274,7 @@ export default function Pool() {
               >
                 <Layers size={14} style={{ marginRight: '8px' }} />
 
-                {t('View V2 Liquidity')}
+                <Trans>View V2 Liquidity</Trans>
               </ButtonOutlined>
               {positions && positions.length > 0 && (
                 <ButtonOutlined
@@ -248,13 +291,14 @@ export default function Pool() {
                 >
                   <ChevronsRight size={16} style={{ marginRight: '8px' }} />
 
-                  {t('Migrate Liquidity')}
+                  <Trans>Migrate Liquidity</Trans>
                 </ButtonOutlined>
               )}
             </RowFixed>
           </AutoColumn>
         </AutoColumn>
       </PageWrapper>
+      <SwitchLocaleLink />
     </>
   )
 }

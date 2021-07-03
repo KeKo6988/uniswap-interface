@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import styled, { keyframes } from 'styled-components'
-import { TYPE, ExternalLink } from '../../theme'
+import { useActiveWeb3React } from '../../hooks/web3'
 
 import { useBlockNumber } from '../../state/application/hooks'
-import { getEtherscanLink } from '../../utils'
-import { useActiveWeb3React } from '../../hooks'
+import { ExternalLink, TYPE } from '../../theme'
+import { ExplorerDataType, getExplorerLink } from '../../utils/getExplorerLink'
 
 const StyledPolling = styled.div`
   position: fixed;
@@ -21,7 +21,7 @@ const StyledPolling = styled.div`
 `
 const StyledPollingNumber = styled(TYPE.small)<{ breathe: boolean; hovering: boolean }>`
   transition: opacity 0.25s ease;
-  opacity: ${({ breathe, hovering }) => (hovering ? 0.7 : breathe ? 1 : 0.2)};
+  opacity: ${({ breathe, hovering }) => (hovering ? 0.7 : breathe ? 1 : 0.5)};
   :hover {
     opacity: 1;
   }
@@ -91,7 +91,9 @@ export default function Polling() {
   )
 
   return (
-    <ExternalLink href={chainId && blockNumber ? getEtherscanLink(chainId, blockNumber.toString(), 'block') : ''}>
+    <ExternalLink
+      href={chainId && blockNumber ? getExplorerLink(chainId, blockNumber.toString(), ExplorerDataType.BLOCK) : ''}
+    >
       <StyledPolling onMouseEnter={() => setIsHover(true)} onMouseLeave={() => setIsHover(false)}>
         <StyledPollingNumber breathe={isMounting} hovering={isHover}>
           {blockNumber}

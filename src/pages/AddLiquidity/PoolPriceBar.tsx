@@ -1,10 +1,10 @@
 import { Currency, Percent, Price } from '@uniswap/sdk-core'
-import React, { useContext } from 'react'
+import { useContext } from 'react'
 import { Text } from 'rebass'
 import { ThemeContext } from 'styled-components'
 import { AutoColumn } from '../../components/Column'
 import { AutoRow } from '../../components/Row'
-import { ONE_BIPS } from '../../constants'
+import { ONE_BIPS } from '../../constants/misc'
 import { Field } from '../../state/mint/v3/actions'
 import { TYPE } from '../../theme'
 

@@ -1,6 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useV3PositionFromTokenId } from 'hooks/useV3Positions'
 import { Redirect, RouteComponentProps } from 'react-router-dom'
+import { WETH9_EXTENDED } from '../../constants/tokens'
+import { calculateGasMargin } from '../../utils/calculateGasMargin'
 import AppBody from '../AppBody'
 import { BigNumber } from '@ethersproject/bignumber'
 import useDebouncedChangeHandler from 'hooks/useDebouncedChangeHandler'
@@ -18,7 +20,7 @@ import { useV3NFTPositionManagerContract } from 'hooks/useContract'
 import { useUserSlippageToleranceWithDefault } from 'state/user/hooks'
 import useTransactionDeadline from 'hooks/useTransactionDeadline'
 import ReactGA from 'react-ga'
-import { useActiveWeb3React } from 'hooks'
+import { useActiveWeb3React } from 'hooks/web3'
 import { TransactionResponse } from '@ethersproject/providers'
 import { useTransactionAdder } from 'state/transactions/hooks'
 import { Percent } from '@uniswap/sdk-core'
@@ -28,11 +30,11 @@ import Loader from 'components/Loader'
 import DoubleCurrencyLogo from 'components/DoubleLogo'
 import { Break } from 'components/earn/styled'
 import { NonfungiblePositionManager } from '@uniswap/v3-sdk'
-import { calculateGasMargin } from 'utils'
 import useTheme from 'hooks/useTheme'
 import { AddRemoveTabs } from 'components/NavigationTabs'
 import RangeBadge from 'components/Badge/RangeBadge'
 import Toggle from 'components/Toggle'
+import { t, Trans } from '@lingui/macro'
 
 export const UINT128MAX = BigNumber.from(2).pow(128).sub(1)
 
@@ -151,7 +153,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
             setTxnHash(response.hash)
             setAttemptingTxn(false)
             addTransaction(response, {
-              summary: `Remove ${liquidityValue0.currency.symbol}/${liquidityValue1.currency.symbol} V3 liquidity`,
+              summary: t`Remove ${liquidityValue0.currency.symbol}/${liquidityValue1.currency.symbol} V3 liquidity`,
             })
           })
       })
@@ -195,7 +197,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
       <AutoColumn gap={'sm'} style={{ padding: '16px' }}>
         <RowBetween align="flex-end">
           <Text fontSize={16} fontWeight={500}>
-            Pooled {liquidityValue0?.currency?.symbol}:
+            <Trans>Pooled {liquidityValue0?.currency?.symbol}:</Trans>
           </Text>
           <RowFixed>
             <Text fontSize={16} fontWeight={500} marginLeft={'6px'}>
@@ -206,7 +208,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
         </RowBetween>
         <RowBetween align="flex-end">
           <Text fontSize={16} fontWeight={500}>
-            Pooled {liquidityValue1?.currency?.symbol}:
+            <Trans>Pooled {liquidityValue1?.currency?.symbol}:</Trans>
           </Text>
           <RowFixed>
             <Text fontSize={16} fontWeight={500} marginLeft={'6px'}>
@@ -218,11 +220,11 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
         {feeValue0?.greaterThan(0) || feeValue1?.greaterThan(0) ? (
           <>
             <TYPE.italic fontSize={12} color={theme.text2} textAlign="left" padding={'8px 0 0 0'}>
-              {`You will also collect fees earned from this position.`}
+              <Trans>You will also collect fees earned from this position.</Trans>
             </TYPE.italic>
             <RowBetween>
               <Text fontSize={16} fontWeight={500}>
-                {feeValue0?.currency?.symbol} Fees Earned:
+                <Trans>{feeValue0?.currency?.symbol} Fees Earned:</Trans>
               </Text>
               <RowFixed>
                 <Text fontSize={16} fontWeight={500} marginLeft={'6px'}>
@@ -233,7 +235,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
             </RowBetween>
             <RowBetween>
               <Text fontSize={16} fontWeight={500}>
-                {feeValue1?.currency?.symbol} Fees Earned:
+                <Trans>{feeValue1?.currency?.symbol} Fees Earned:</Trans>
               </Text>
               <RowFixed>
                 <Text fontSize={16} fontWeight={500} marginLeft={'6px'}>
@@ -245,7 +247,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
           </>
         ) : null}
         <ButtonPrimary mt="16px" onClick={burn}>
-          Remove
+          <Trans>Remove</Trans>
         </ButtonPrimary>
       </AutoColumn>
     )
@@ -260,7 +262,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
         hash={txnHash ?? ''}
         content={() => (
           <ConfirmationModalContent
-            title={'Remove Liquidity'}
+            title={<Trans>Remove Liquidity</Trans>}
             onDismiss={handleDismissConfirmation}
             topContent={modalHeader}
           />
@@ -294,21 +296,25 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
               </RowBetween>
               <LightCard>
                 <AutoColumn gap="md">
-                  <TYPE.main fontWeight={400}>Amount</TYPE.main>
+                  <TYPE.main fontWeight={400}>
+                    <Trans>Amount</Trans>
+                  </TYPE.main>
                   <RowBetween>
-                    <ResponsiveHeaderText>{percentForSlider}%</ResponsiveHeaderText>
+                    <ResponsiveHeaderText>
+                      <Trans>{percentForSlider}%</Trans>
+                    </ResponsiveHeaderText>
                     <AutoRow gap="4px" justify="flex-end">
                       <SmallMaxButton onClick={() => onPercentSelect(25)} width="20%">
-                        25%
+                        <Trans>25%</Trans>
                       </SmallMaxButton>
                       <SmallMaxButton onClick={() => onPercentSelect(50)} width="20%">
-                        50%
+                        <Trans>50%</Trans>
                       </SmallMaxButton>
                       <SmallMaxButton onClick={() => onPercentSelect(75)} width="20%">
-                        75%
+                        <Trans>75%</Trans>
                       </SmallMaxButton>
                       <SmallMaxButton onClick={() => onPercentSelect(100)} width="20%">
-                        Max
+                        <Trans>Max</Trans>
                       </SmallMaxButton>
                     </AutoRow>
                   </RowBetween>
@@ -319,7 +325,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
                 <AutoColumn gap="md">
                   <RowBetween>
                     <Text fontSize={16} fontWeight={500}>
-                      Pooled {liquidityValue0?.currency?.symbol}:
+                      <Trans>Pooled {liquidityValue0?.currency?.symbol}:</Trans>
                     </Text>
                     <RowFixed>
                       <Text fontSize={16} fontWeight={500} marginLeft={'6px'}>
@@ -330,7 +336,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
                   </RowBetween>
                   <RowBetween>
                     <Text fontSize={16} fontWeight={500}>
-                      Pooled {liquidityValue1?.currency?.symbol}:
+                      <Trans>Pooled {liquidityValue1?.currency?.symbol}:</Trans>
                     </Text>
                     <RowFixed>
                       <Text fontSize={16} fontWeight={500} marginLeft={'6px'}>
@@ -344,7 +350,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
                       <Break />
                       <RowBetween>
                         <Text fontSize={16} fontWeight={500}>
-                          {feeValue0?.currency?.symbol} Fees Earned:
+                          <Trans>{feeValue0?.currency?.symbol} Fees Earned:</Trans>
                         </Text>
                         <RowFixed>
                           <Text fontSize={16} fontWeight={500} marginLeft={'6px'}>
@@ -355,7 +361,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
                       </RowBetween>
                       <RowBetween>
                         <Text fontSize={16} fontWeight={500}>
-                          {feeValue1?.currency?.symbol} Fees Earned:
+                          <Trans>{feeValue1?.currency?.symbol} Fees Earned:</Trans>
                         </Text>
                         <RowFixed>
                           <Text fontSize={16} fontWeight={500} marginLeft={'6px'}>
@@ -369,14 +375,23 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
                 </AutoColumn>
               </LightCard>
 
-              <RowBetween>
-                <TYPE.main>Collect as WETH</TYPE.main>
-                <Toggle
-                  id="receive-as-weth"
-                  isActive={receiveWETH}
-                  toggle={() => setReceiveWETH((receiveWETH) => !receiveWETH)}
-                />
-              </RowBetween>
+              {liquidityValue0?.currency &&
+              liquidityValue1?.currency &&
+              (liquidityValue0.currency.isNative ||
+                liquidityValue1.currency.isNative ||
+                liquidityValue0.currency.wrapped.equals(WETH9_EXTENDED[liquidityValue0.currency.chainId]) ||
+                liquidityValue1.currency.wrapped.equals(WETH9_EXTENDED[liquidityValue1.currency.chainId])) ? (
+                <RowBetween>
+                  <TYPE.main>
+                    <Trans>Collect as WETH</Trans>
+                  </TYPE.main>
+                  <Toggle
+                    id="receive-as-weth"
+                    isActive={receiveWETH}
+                    toggle={() => setReceiveWETH((receiveWETH) => !receiveWETH)}
+                  />
+                </RowBetween>
+              ) : null}
 
               <div style={{ display: 'flex' }}>
                 <AutoColumn gap="12px" style={{ flex: '1' }}>
@@ -385,7 +400,7 @@ function Remove({ tokenId }: { tokenId: BigNumber }) {
                     disabled={removed || percent === 0 || !liquidityValue0}
                     onClick={() => setShowConfirm(true)}
                   >
-                    {removed ? 'Inactive' : error ?? 'Remove'}
+                    {removed ? <Trans>Closed</Trans> : error ?? <Trans>Remove</Trans>}
                   </ButtonConfirmed>
                 </AutoColumn>
               </div>

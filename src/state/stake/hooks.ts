@@ -1,39 +1,43 @@
-import { ChainId, Token, CurrencyAmount, WETH9 } from '@uniswap/sdk-core'
+import { t } from '@lingui/macro'
+import { Token, CurrencyAmount } from '@uniswap/sdk-core'
 import { Pair } from '@uniswap/v2-sdk'
 import JSBI from 'jsbi'
 import { useMemo } from 'react'
-import { DAI, UNI, USDC, USDT, WBTC } from '../../constants'
-import { STAKING_REWARDS_INTERFACE } from '../../abis/staking-rewards'
-import { useActiveWeb3React } from '../../hooks'
+import { DAI, UNI, USDC, USDT, WBTC, WETH9_EXTENDED } from '../../constants/tokens'
+import { useActiveWeb3React } from '../../hooks/web3'
 import { NEVER_RELOAD, useMultipleContractSingleData } from '../multicall/hooks'
 import { tryParseAmount } from '../swap/hooks'
 import useCurrentBlockTimestamp from 'hooks/useCurrentBlockTimestamp'
+import { Interface } from '@ethersproject/abi'
+import { abi as STAKING_REWARDS_ABI } from '@uniswap/liquidity-staker/build/StakingRewards.json'
+
+export const STAKING_REWARDS_INTERFACE = new Interface(STAKING_REWARDS_ABI)
 
 export const STAKING_GENESIS = 1600387200
 
 export const REWARDS_DURATION_DAYS = 60
 
 export const STAKING_REWARDS_INFO: {
-  [chainId in ChainId]?: {
+  [chainId: number]: {
     tokens: [Token, Token]
     stakingRewardAddress: string
   }[]
 } = {
-  [ChainId.MAINNET]: [
+  [1]: [
     {
-      tokens: [WETH9[ChainId.MAINNET], DAI],
+      tokens: [WETH9_EXTENDED[1], DAI],
       stakingRewardAddress: '0xa1484C3aa22a66C62b77E0AE78E15258bd0cB711',
     },
     {
-      tokens: [WETH9[ChainId.MAINNET], USDC],
+      tokens: [WETH9_EXTENDED[1], USDC],
       stakingRewardAddress: '0x7FBa4B8Dc5E7616e59622806932DBea72537A56b',
     },
     {
-      tokens: [WETH9[ChainId.MAINNET], USDT],
+      tokens: [WETH9_EXTENDED[1], USDT],
       stakingRewardAddress: '0x6C3e4cb2E96B01F4b866965A91ed4437839A121a',
     },
     {
-      tokens: [WETH9[ChainId.MAINNET], WBTC],
+      tokens: [WETH9_EXTENDED[1], WBTC],
       stakingRewardAddress: '0xCA35e32e7926b96A9988f61d510E038108d8068e',
     },
   ],
@@ -258,10 +262,10 @@ export function useDerivedStakeInfo(
 
   let error: string | undefined
   if (!account) {
-    error = 'Connect Wallet'
+    error = t`Connect Wallet`
   }
   if (!parsedAmount) {
-    error = error ?? 'Enter an amount'
+    error = error ?? t`Enter an amount`
   }
 
   return {
@@ -287,10 +291,10 @@ export function useDerivedUnstakeInfo(
 
   let error: string | undefined
   if (!account) {
-    error = 'Connect Wallet'
+    error = t`Connect Wallet`
   }
   if (!parsedAmount) {
-    error = error ?? 'Enter an amount'
+    error = error ?? t`Enter an amount`
   }
 
   return {

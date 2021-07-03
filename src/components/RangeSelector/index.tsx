@@ -1,9 +1,7 @@
-import React from 'react'
+import { Trans } from '@lingui/macro'
 import { Currency, Price, Token } from '@uniswap/sdk-core'
 import StepCounter from 'components/InputStepCounter/InputStepCounter'
 import { RowBetween } from 'components/Row'
-import { useActiveWeb3React } from 'hooks'
-import { wrappedCurrency } from 'utils/wrappedCurrency'
 
 // currencyA is the base token
 export default function RangeSelector({
@@ -31,9 +29,8 @@ export default function RangeSelector({
   currencyB?: Currency | null
   feeAmount?: number
 }) {
-  const { chainId } = useActiveWeb3React()
-  const tokenA = wrappedCurrency(currencyA ?? undefined, chainId)
-  const tokenB = wrappedCurrency(currencyB ?? undefined, chainId)
+  const tokenA = (currencyA ?? undefined)?.wrapped
+  const tokenB = (currencyB ?? undefined)?.wrapped
   const isSorted = tokenA && tokenB && tokenA.sortsBefore(tokenB)
 
   const leftPrice = isSorted ? priceLower : priceUpper?.invert()
@@ -49,7 +46,7 @@ export default function RangeSelector({
         increment={isSorted ? getIncrementLower : getDecrementUpper}
         feeAmount={feeAmount}
         label={leftPrice ? `${currencyB?.symbol}` : '-'}
-        title={'Min Price'}
+        title={<Trans>Min Price</Trans>}
         tokenA={currencyA?.symbol}
         tokenB={currencyB?.symbol}
       />
@@ -63,7 +60,7 @@ export default function RangeSelector({
         label={rightPrice ? `${currencyB?.symbol}` : '-'}
         tokenA={currencyA?.symbol}
         tokenB={currencyB?.symbol}
-        title={'Max Price'}
+        title={<Trans>Max Price</Trans>}
       />
     </RowBetween>
   )

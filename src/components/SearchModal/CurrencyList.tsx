@@ -1,9 +1,10 @@
-import { Currency, CurrencyAmount, currencyEquals, Token } from '@uniswap/sdk-core'
-import React, { CSSProperties, MutableRefObject, useCallback, useMemo } from 'react'
+import { Trans } from '@lingui/macro'
+import { Currency, CurrencyAmount, Token } from '@uniswap/sdk-core'
+import { CSSProperties, MutableRefObject, useCallback, useMemo } from 'react'
 import { FixedSizeList } from 'react-window'
 import { Text } from 'rebass'
 import styled from 'styled-components/macro'
-import { useActiveWeb3React } from '../../hooks'
+import { useActiveWeb3React } from '../../hooks/web3'
 import { useCombinedActiveList } from '../../state/lists/hooks'
 import { WrappedTokenInfo } from '../../state/lists/wrappedTokenInfo'
 import { useCurrencyBalance } from '../../state/wallet/hooks'
@@ -17,7 +18,6 @@ import { MenuItem } from './styleds'
 import Loader from '../Loader'
 import { isTokenOnList } from '../../utils'
 import ImportRow from './ImportRow'
-import { wrappedCurrency } from 'utils/wrappedCurrency'
 import { LightGreyCard } from 'components/Card'
 import TokenListLogo from '../../assets/svg/tokenlist.svg'
 import QuestionHelper from 'components/QuestionHelper'
@@ -104,12 +104,14 @@ function CurrencyRow({
   isSelected,
   otherSelected,
   style,
+  showCurrencyAmount,
 }: {
   currency: Currency
   onSelect: () => void
   isSelected: boolean
   otherSelected: boolean
   style: CSSProperties
+  showCurrencyAmount?: boolean
 }) {
   const { account } = useActiveWeb3React()
   const key = currencyKey(currency)
@@ -133,13 +135,19 @@ function CurrencyRow({
           {currency.symbol}
         </Text>
         <TYPE.darkGray ml="0px" fontSize={'12px'} fontWeight={300}>
-          {currency.name} {!currency.isEther && !isOnSelectedList && customAdded && '• Added by user'}
+          {!currency.isNative && !isOnSelectedList && customAdded ? (
+            <Trans>{currency.name} • Added by user</Trans>
+          ) : (
+            currency.name
+          )}
         </TYPE.darkGray>
       </Column>
       <TokenTags currency={currency} />
-      <RowFixed style={{ justifySelf: 'flex-end' }}>
-        {balance ? <Balance balance={balance} /> : account ? <Loader /> : null}
-      </RowFixed>
+      {showCurrencyAmount && (
+        <RowFixed style={{ justifySelf: 'flex-end' }}>
+          {balance ? <Balance balance={balance} /> : account ? <Loader /> : null}
+        </RowFixed>
+      )}
     </MenuItem>
   )
 }
@@ -159,10 +167,16 @@ function BreakLineComponent({ style }: { style: CSSProperties }) {
           <RowFixed>
             <TokenListLogoWrapper src={TokenListLogo} />
             <TYPE.main ml="6px" fontSize="12px" color={theme.text1}>
-              Expanded results from inactive Token Lists
+              <Trans>Expanded results from inactive Token Lists</Trans>
             </TYPE.main>
           </RowFixed>
-          <QuestionHelper text="Tokens from inactive lists. Import specific tokens below or click 'Manage' to activate more lists." />
+          <QuestionHelper
+            text={
+              <Trans>
+                Tokens from inactive lists. Import specific tokens below or click Manage to activate more lists.
+              </Trans>
+            }
+          />
         </RowBetween>
       </LightGreyCard>
     </FixedContentRow>
@@ -179,6 +193,7 @@ export default function CurrencyList({
   fixedListRef,
   showImportView,
   setImportToken,
+  showCurrencyAmount,
 }: {
   height: number
   currencies: Currency[]
@@ -189,6 +204,7 @@ export default function CurrencyList({
   fixedListRef?: MutableRefObject<FixedSizeList | undefined>
   showImportView: () => void
   setImportToken: (token: Token) => void
+  showCurrencyAmount?: boolean
 }) {
   const itemData: (Currency | BreakLine)[] = useMemo(() => {
     if (otherListTokens && otherListTokens?.length > 0) {
@@ -196,8 +212,6 @@ export default function CurrencyList({
     }
     return currencies
   }, [currencies, otherListTokens])
-
-  const { chainId } = useActiveWeb3React()
 
   const Row = useCallback(
     function TokenRow({ data, index, style }) {
@@ -209,11 +223,11 @@ export default function CurrencyList({
 
       const currency = row
 
-      const isSelected = Boolean(currency && selectedCurrency && currencyEquals(selectedCurrency, currency))
-      const otherSelected = Boolean(currency && otherCurrency && currencyEquals(otherCurrency, currency))
+      const isSelected = Boolean(currency && selectedCurrency && selectedCurrency.equals(currency))
+      const otherSelected = Boolean(currency && otherCurrency && otherCurrency.equals(currency))
       const handleSelect = () => currency && onCurrencySelect(currency)
 
-      const token = wrappedCurrency(currency, chainId)
+      const token = currency?.wrapped
 
       const showImport = index > currencies.length
 
@@ -229,13 +243,22 @@ export default function CurrencyList({
             isSelected={isSelected}
             onSelect={handleSelect}
             otherSelected={otherSelected}
+            showCurrencyAmount={showCurrencyAmount}
           />
         )
       } else {
         return null
       }
     },
-    [chainId, currencies.length, onCurrencySelect, otherCurrency, selectedCurrency, setImportToken, showImportView]
+    [
+      currencies.length,
+      onCurrencySelect,
+      otherCurrency,
+      selectedCurrency,
+      setImportToken,
+      showImportView,
+      showCurrencyAmount,
+    ]
   )
 
   const itemKey = useCallback((index: number, data: typeof itemData) => {
